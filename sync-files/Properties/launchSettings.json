@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "sync-files": {
+      "commandName": "Project",
+      "commandLineArgs": "--destination \"E:\" --source \"C:\\Users\\ben\\Repos\\pico-neopixel\" --filters \"*.py\" \"*.mpy\" "
+    }
+  }
+}
