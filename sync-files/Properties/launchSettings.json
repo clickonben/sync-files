@@ -2,7 +2,7 @@
   "profiles": {
     "sync-files": {
       "commandName": "Project",
-      "commandLineArgs": "--destination \"E:\" --source \"C:\\Users\\ben\\Repos\\pico-neopixel\" --filters \"*.py\" \"*.mpy\" "
+      "commandLineArgs": "--source \"D:\\source\" \r\n--destination \"D:\\destination\" \r\n--filters \"*.py\" \"*.mpy\" \"*.txt\""
     }
   }
 }

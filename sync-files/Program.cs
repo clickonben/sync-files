@@ -1,5 +1,4 @@
-﻿using System;
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.CommandLine.Parsing;
 
 namespace SyncFiles;
@@ -20,16 +19,17 @@ class Program
         var sourceOption = new Option<DirectoryInfo>("--source", "Source folder");
         var destinationOption = new Option<DirectoryInfo>("--destination", "Destination folder");
         var filtersOption = new Option<IEnumerable<string>>("--filters", "List of file extensions to monitor") { AllowMultipleArgumentsPerToken = true };
+        
         rootCommand.AddOption(sourceOption);
         rootCommand.AddOption(destinationOption);
         rootCommand.AddOption(filtersOption);
-
         rootCommand.SetHandler(
             WatchFolder,
             sourceOption,
             destinationOption,
             filtersOption
         );
+        
         return rootCommand;
     }
 
@@ -46,18 +46,7 @@ class Program
             Console.WriteLine($"Destination: {destination}");
             Console.WriteLine($"Filters: {string.Join(" ", filters)}");
             _destination = destination;
-
-            var watchers = filters.Select(filter => new FileSystemWatcher(source.FullName, filter)
-            {
-                IncludeSubdirectories = true               
-            });
-
-            foreach( var watcher in watchers)
-            {
-                watcher.Changed += OnCreateOrChange;                
-                watcher.Created += OnCreateOrChange;                
-            }
-
+            var watchers = filters.Select(f => CreateWatcher(source.FullName, f)).ToArray();
             using var watcherManager = new FileSystemWatcherManager(watchers);
             Console.WriteLine("Press any key to exit");
             Console.Read();
@@ -67,6 +56,19 @@ class Program
             
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
+    }
+
+    private static FileSystemWatcher CreateWatcher(string path, string filter)
+    {
+        var watcher = new FileSystemWatcher(path, filter)
+        {
+            IncludeSubdirectories = true
+        };
+        watcher.Changed += OnCreateOrChange;
+        watcher.Created += OnCreateOrChange;
+        watcher.Deleted += OnDelete;
+        watcher.Renamed += OnRename;
+        return watcher;        
     }
 
     static bool ParametersValid(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters)
@@ -104,7 +106,7 @@ class Program
 
     static void DisplayHelpText()
     {
-        Console.WriteLine("Example usage: sync-files --source \"c:\\users\\dave\\repos\" --destination \"d:\" --filters \"*.py\" \"*.mpy\"");
+        Console.WriteLine("Example usage: sync-files --source \"c:\\source\" --destination \"c:\\destination\" --filters \"*.py\" \"*.mpy\"");
     }
 
     static void OnCreateOrChange(object sender, FileSystemEventArgs e)
@@ -117,7 +119,7 @@ class Program
 
         try
         {
-            File.Copy(e.FullPath, dest);
+            File.Copy(e.FullPath, dest, true);
         }
         catch (Exception ex)
         {
@@ -170,8 +172,8 @@ class Program
             _watchers = watchers;
             foreach (var watcher in _watchers)
             {
-                watcher.EnableRaisingEvents = true;
-            }
+                watcher.EnableRaisingEvents = true;          
+            }            
         }
 
         public void Dispose()
