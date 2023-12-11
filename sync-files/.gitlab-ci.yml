@@ -1,0 +1,27 @@
+stages:
+  - build
+  - deploy
+
+create_nuget_package:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:latest
+  script:
+    - dotnet restore
+    - dotnet build -c Release
+    - dotnet pack -c Release -o ./nupkgs
+  artifacts:
+    paths:
+      - ./nupkgs/*.nupkg
+    expire_in: 1 hour
+
+publish_nuget_package:
+  stage: deploy
+  image: mcr.microsoft.com/dotnet/sdk:latest
+  script:
+    - 'echo "Uploading NuGet package to GitLab Package Registry"'    
+    - dotnet nuget add source "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/nuget/index.json" --name gitlab --username gitlab-ci-token --password $CI_JOB_TOKEN --store-password-in-clear-text
+    - dotnet nuget push "bin/Release/*.nupkg" --source gitlab
+  dependencies:
+    - create_nuget_package
+  only:
+    - main
