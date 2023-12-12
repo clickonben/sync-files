@@ -13,6 +13,8 @@ create_nuget_package:
     paths:
       - ./nupkgs/*.nupkg
     expire_in: 1 hour
+  tags:
+    - local-docker
 
 publish_nuget_package:
   stage: deploy
@@ -25,3 +27,6 @@ publish_nuget_package:
     - create_nuget_package
   only:
     - main
+  tags:
+    - local-docker
+
