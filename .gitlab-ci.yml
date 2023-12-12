@@ -5,6 +5,14 @@ stages:
 create_nuget_package:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:latest
+  before_script:       
+    - 'echo "Incrementing the version number"'
+    - NEW_VERSION=$(awk '/<Version>/ {print $1}' sync-files.csproj | sed 's/<Version>\(.*\)<\/Version>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+    - sed -i 's/<Version>.*<\/Version>/<Version>'"$NEW_VERSION"'<\/Version>/' YourProject.csproj
+    - git config --global user.email "ben@click-on.co.uk"
+    - git config --global user.name "Ben Robinson"
+    - git commit -am "Increment version number to $NEW_VERSION"
+    - git push origin HEAD:main
   script:
     - dotnet restore
     - dotnet build -c Release
@@ -15,6 +23,8 @@ create_nuget_package:
     expire_in: 1 hour
   tags:
     - local-docker
+  only:
+    - main
 
 publish_nuget_package:
   stage: deploy
