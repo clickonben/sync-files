@@ -52,8 +52,7 @@ class Program
             Console.Read();
         }
         catch (Exception ex)
-        {
-            
+        {            
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
     }
