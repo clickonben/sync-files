@@ -7,12 +7,14 @@ create_nuget_package:
   image: mcr.microsoft.com/dotnet/sdk:latest
   before_script:       
     - 'echo "Incrementing the version number"'
-    - NEW_VERSION=$(awk '/<Version>/ {print $1}' sync-files.csproj | sed 's/<Version>\(.*\)<\/Version>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
-    - sed -i 's/<Version>.*<\/Version>/<Version>'"$NEW_VERSION"'<\/Version>/' YourProject.csproj
+    - NEW_VERSION=$(awk '/<VersionPrefix>/ {print $1}' sync-files/sync-files.csproj | sed 's/<VersionPrefix>\(.*\)<\/VersionPrefix>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+    - sed -i 's/<VersionPrefix>.*<\/VersionPrefix>/<VersionPrefix>'"$NEW_VERSION"'<\/VersionPrefix>/' sync-files/sync-files.csproj
     - git config --global user.email "ben@click-on.co.uk"
     - git config --global user.name "Ben Robinson"
     - git commit -am "Increment version number to $NEW_VERSION"
+    - git tag "$NEW_VERSION"
     - git push origin HEAD:main
+    - git push origin "$NEW_VERSION"
   script:
     - dotnet restore
     - dotnet build -c Release
