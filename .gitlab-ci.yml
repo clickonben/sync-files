@@ -4,17 +4,7 @@ stages:
 
 create_nuget_package:
   stage: build
-  image: mcr.microsoft.com/dotnet/sdk:latest
-  before_script:       
-    - 'echo "Incrementing the version number"'
-    - NEW_VERSION=$(awk '/<VersionPrefix>/ {print $1}' sync-files/sync-files.csproj | sed 's/<VersionPrefix>\(.*\)<\/VersionPrefix>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
-    - sed -i 's/<VersionPrefix>.*<\/VersionPrefix>/<VersionPrefix>'"$NEW_VERSION"'<\/VersionPrefix>/' sync-files/sync-files.csproj
-    - git config --global user.email "ben@click-on.co.uk"
-    - git config --global user.name "Ben Robinson"
-    - git commit -am "Increment version number to $NEW_VERSION"
-    - git tag "$NEW_VERSION"
-    - git push origin HEAD:main
-    - git push origin "$NEW_VERSION"
+  image: mcr.microsoft.com/dotnet/sdk:latest  
   script:
     - dotnet restore
     - dotnet build -c Release
@@ -31,6 +21,17 @@ create_nuget_package:
 publish_nuget_package:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:latest
+  before_script:       
+    - 'echo "Incrementing the version number"'
+    - NEW_VERSION=$(awk '/<VersionPrefix>/ {print $1}' sync-files/sync-files.csproj | sed 's/<VersionPrefix>\(.*\)<\/VersionPrefix>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+    - sed -i 's/<VersionPrefix>.*<\/VersionPrefix>/<VersionPrefix>'"$NEW_VERSION"'<\/VersionPrefix>/' sync-files/sync-files.csproj
+    - git config --global user.name "$GITLAB_USER_NAME"
+    - git config --global user.email "$GITLAB_USER_EMAIL"
+    - git commit -am "Increment version number to $NEW_VERSION"
+    - git tag "$NEW_VERSION"
+    - git remote set-url origin https://gitlab:${GIT_PUSH_TOKEN}@${CI_SERVER_HOST}/ben/sync-files.git
+    - git push origin HEAD:main
+    - git push origin "$NEW_VERSION"
   script:
     - 'echo "Uploading NuGet package to GitLab Package Registry"'    
     - dotnet nuget add source "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/nuget/index.json" --name gitlab --username gitlab-ci-token --password $CI_JOB_TOKEN --store-password-in-clear-text
