@@ -21,7 +21,9 @@ create_nuget_package:
 publish_nuget_package:
   stage: deploy
   image: mcr.microsoft.com/dotnet/sdk:latest
-  before_script:       
+  before_script:
+    - git fetch origin
+    - git reset --hard origin/${CI_COMMIT_REF_NAME}
     - 'echo "Incrementing the version number"'
     - NEW_VERSION=$(awk '/<VersionPrefix>/ {print $1}' sync-files/sync-files.csproj | sed 's/<VersionPrefix>\(.*\)<\/VersionPrefix>/\1/' | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
     - sed -i 's/<VersionPrefix>.*<\/VersionPrefix>/<VersionPrefix>'"$NEW_VERSION"'<\/VersionPrefix>/' sync-files/sync-files.csproj
