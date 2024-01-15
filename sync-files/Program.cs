@@ -70,7 +70,7 @@ class Program
 
         if(initialise)
         {
-            Initialiser.Initialise(source, destination, filesToKeep ?? Array.Empty<string>());
+            Initialiser.Initialise(source, destination, filters, filesToKeep ?? Array.Empty<string>());
         }
         
         try
