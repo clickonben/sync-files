@@ -2,7 +2,7 @@
   "profiles": {
     "sync-files": {
       "commandName": "Project",
-      "commandLineArgs": "--source \"D:\\source\" \r\n--destination \"D:\\destination\" \r\n--filters \"*.py\" \"*.mpy\" \"*.txt\""
+      "commandLineArgs": "--source \"D:\\source\" \r\n--destination \"D:\\destination\" \r\n--filters \"*.py\" \"*.mpy\" \"*.toml\" \"*.html\"\r\n--initialise\r\n--keepFiles \"boot_out.txt\" \"settings.toml\""
     }
   }
 }

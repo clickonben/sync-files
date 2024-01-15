@@ -1,5 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
+using sync_files.Utilities;
+using SyncFiles.Utilities;
 
 namespace SyncFiles;
 
@@ -15,63 +17,80 @@ class Program
 
     private static RootCommand ParseArguments()
     {
-        var rootCommand = new RootCommand("File sync app");
-        var sourceOption = new Option<DirectoryInfo>("--source", "Source folder");
-        var destinationOption = new Option<DirectoryInfo>("--destination", "Destination folder");
-        var filtersOption = new Option<IEnumerable<string>>("--filters", "List of file extensions to monitor") { AllowMultipleArgumentsPerToken = true };
-        
+        RootCommand rootCommand = new("File sync app");
+
+        var sourceOption = new Option<DirectoryInfo>(
+                aliases: ["--source", "-s"],
+                description: "Source folder");
+
+        var destinationOption = new Option<DirectoryInfo>(
+                aliases: ["--destination", "-d"],
+                description: "Destination folder");
+
+        var filtersOption = new Option<IEnumerable<string>>(
+                aliases: ["--filters", "-f"],
+                description: "List of file extensions to monitor")
+        { AllowMultipleArgumentsPerToken = true };
+
+        var initialiseOption = new Option<bool>(
+                aliases: ["--initialise", "-i"],
+                description: "Whether or not to initialise the destination",
+                getDefaultValue: () => true);
+
+        var filesToKeepOption = new Option<IEnumerable<string>>(
+                aliases: ["--keepFiles", "-kf"],
+                description: "Files to exclude from initialisation")
+                { AllowMultipleArgumentsPerToken = true }; ;
+
+
         rootCommand.AddOption(sourceOption);
         rootCommand.AddOption(destinationOption);
         rootCommand.AddOption(filtersOption);
+        rootCommand.AddOption(initialiseOption);
+        rootCommand.AddOption(filesToKeepOption);
+
         rootCommand.SetHandler(
             WatchFolder,
             sourceOption,
             destinationOption,
-            filtersOption
+            filtersOption,
+            initialiseOption,
+            filesToKeepOption
         );
-        
+
         return rootCommand;
     }
 
-    static void WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters)
+    static void WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
     {
+        if (!ParametersValid(source, destination, filters, initialise, filesToKeep))
+        {
+            return;
+        };
+
+        if(initialise)
+        {
+            Initialiser.Initialise(source, destination, filesToKeep ?? Array.Empty<string>());
+        }
+        
         try
         {
-            if(!ParametersValid(source, destination, filters))
-            {
-                return;
-            };
-
             Console.WriteLine($"Source: {source}");
             Console.WriteLine($"Destination: {destination}");
             Console.WriteLine($"Filters: {string.Join(" ", filters)}");
             _destination = destination;
-            var watchers = filters.Select(f => CreateWatcher(source.FullName, f)).ToArray();
-            using var watcherManager = new FileSystemWatcherManager(watchers);
+            using var watcherManager = new FileSystemWatcherManager(source, destination, filters);
             Console.WriteLine("Press any key to exit");
             Console.Read();
         }
         catch (Exception ex)
-        {            
+        {
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
     }
 
-    private static FileSystemWatcher CreateWatcher(string path, string filter)
+    static bool ParametersValid(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
     {
-        var watcher = new FileSystemWatcher(path, filter)
-        {
-            IncludeSubdirectories = true
-        };
-        watcher.Changed += OnCreateOrChange;
-        watcher.Created += OnCreateOrChange;
-        watcher.Deleted += OnDelete;
-        watcher.Renamed += OnRename;
-        return watcher;        
-    }
-
-    static bool ParametersValid(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters)
-    {        
         if (source == null)
         {
             Console.WriteLine("Required parameter --source is missing or could not be parsed corectly.");
@@ -100,88 +119,16 @@ class Program
             Console.WriteLine($"Destination folder '{destination.FullName}' does not exist.");
             return false;
         }
+
+        if (!initialise && filesToKeep != null && filesToKeep.Any()) 
+        {
+            Console.WriteLine("Parameter --keepFiles will be ignored because --initialise is false.");
+        }
         return true;
     }
 
     static void DisplayHelpText()
     {
-        Console.WriteLine("Example usage: sync-files --source \"c:\\source\" --destination \"c:\\destination\" --filters \"*.py\" \"*.mpy\"");
-    }
-
-    static void OnCreateOrChange(object sender, FileSystemEventArgs e)
-    {
-        Console.WriteLine($"File created or changed: {e.FullPath}");
-
-        var dest = Path.Join(_destination?.FullName, e.Name);
-
-        Console.WriteLine($"Copying {e.FullPath} to {dest}");
-
-        try
-        {
-            File.Copy(e.FullPath, dest, true);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-        }   
-    }
-
-    static void OnDelete( object Sender, FileSystemEventArgs e)
-    {
-        Console.WriteLine($"File deleted: {e.FullPath}");
-        var dest = Path.Join(_destination?.FullName, e.Name);
-
-        Console.WriteLine($"Deleting {dest}");
-
-        try
-        {
-            File.Delete(dest);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-        }
-    }
-
-    static void OnRename(object Sender, RenamedEventArgs e)
-    {
-        Console.WriteLine($"File {e.OldFullPath} renamed to {e.FullPath}");
-
-        var oldfile = Path.Join(_destination?.FullName, e.OldName);
-        var newfile = Path.Join(_destination?.FullName, e.Name);
-
-        Console.WriteLine($"Renaming {oldfile} to {newfile}");
-
-        try
-        {
-            File.Move(oldfile, newfile);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-        }
-    }
-
-    public class FileSystemWatcherManager : IDisposable
-    {
-        private readonly IEnumerable<FileSystemWatcher> _watchers;
-
-        public FileSystemWatcherManager(IEnumerable<FileSystemWatcher> watchers)
-        {
-            _watchers = watchers;
-            foreach (var watcher in _watchers)
-            {
-                watcher.EnableRaisingEvents = true;          
-            }            
-        }
-
-        public void Dispose()
-        {
-            foreach (var watcher in _watchers)
-            {
-                watcher.EnableRaisingEvents = false;
-                watcher.Dispose();
-            }
-        }
-    }
+        Console.WriteLine("Example usage: sync-files --source \"c:\\source\" --destination \"c:\\destination\" --filters \"*.py\" \"*.mpy\" --initialise --keepFiles \"boot_out.txt\" \"settings.toml\"");
+    }   
 }
