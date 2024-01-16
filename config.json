@@ -1,7 +1,0 @@
-{
-  "source": "D:\\Source",
-  "destination": "D:\\Destination",
-  "initialise": true,
-  "filters": [ "*.py", "*.mpy", "*.toml", "*.html" ],
-  "filesToKeep": [ "boot_out.txt", "settings.toml" ]
-}
