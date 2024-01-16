@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
-using sync_files.Utilities;
+using Newtonsoft.Json;
+using SyncFiles.Model;
 using SyncFiles.Utilities;
 
 namespace SyncFiles;
@@ -10,9 +11,34 @@ class Program
     static DirectoryInfo? _destination;
     static async Task<int> Main(string[] args)
     {
-        RootCommand rootCommand = ParseArguments();
+
+        Config? configFile = await TryLoadConfigFromFileAsync("config.json");
+        if (configFile != null)
+        {
+            WatchFolder(configFile);
+            return 0;
+        }
+
+        RootCommand rootCommand = ParseArguments();       
 
         return await rootCommand.InvokeAsync(args);
+    }
+
+    private static async Task<Config?> TryLoadConfigFromFileAsync(string filePath)
+    {
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                string json = await File.ReadAllTextAsync(filePath);
+                return JsonConvert.DeserializeObject<Config>(json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading config file: {ex.Message}");
+            }
+        }
+        return null;
     }
 
     private static RootCommand ParseArguments()
@@ -30,7 +56,7 @@ class Program
         var filtersOption = new Option<IEnumerable<string>>(
                 aliases: ["--filters", "-f"],
                 description: "List of file extensions to monitor")
-        { AllowMultipleArgumentsPerToken = true };
+                { AllowMultipleArgumentsPerToken = true };
 
         var initialiseOption = new Option<bool>(
                 aliases: ["--initialise", "-i"],
@@ -61,25 +87,20 @@ class Program
         return rootCommand;
     }
 
-    static void WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
+    static void WatchFolder(Config config)
     {
-        if (!ParametersValid(source, destination, filters, initialise, filesToKeep))
+        if (config.Initialise)
         {
-            return;
-        };
-
-        if(initialise)
-        {
-            Initialiser.Initialise(source, destination, filters, filesToKeep ?? Array.Empty<string>());
+            Initialiser.Initialise(config);
         }
-        
+
         try
         {
-            Console.WriteLine($"Source: {source}");
-            Console.WriteLine($"Destination: {destination}");
-            Console.WriteLine($"Filters: {string.Join(" ", filters)}");
-            _destination = destination;
-            using var watcherManager = new FileSystemWatcherManager(source, destination, filters);
+            Console.WriteLine($"Source: {config.Source}");
+            Console.WriteLine($"Destination: {config.Destination}");
+            Console.WriteLine($"Filters: {string.Join(" ", config.Filters)}");
+            _destination = config.Destination;
+            using var watcherManager = new FileSystemWatcherManager(config.Source, config.Destination, config.Filters);
             Console.WriteLine("Press any key to exit");
             Console.Read();
         }
@@ -89,38 +110,50 @@ class Program
         }
     }
 
-    static bool ParametersValid(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
+    static void WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
     {
-        if (source == null)
+        Config config = new(source, destination, initialise, filters, filesToKeep ?? Array.Empty<string>());
+
+        if (!ConfigValid(config))
+        {
+            return;
+        }
+        
+        WatchFolder(config);
+    }
+
+    static bool ConfigValid(Config config)
+    {
+        if (config.Source == null)
         {
             Console.WriteLine("Required parameter --source is missing or could not be parsed corectly.");
             DisplayHelpText();
             return false;
         }
-        if (destination == null)
+        if (config.Destination == null)
         {
             Console.WriteLine("Required parameter --destination is missing or could not be parsed corectly.");
             DisplayHelpText();
             return false;
         }
-        if (filters == null || !filters.Any())
+        if (config.Filters == null || !config.Filters.Any())
         {
             Console.WriteLine("Required parameter --filters is missing or could not be parsed corectly.");
             DisplayHelpText();
             return false;
         }
-        if (!source.Exists)
+        if (!config.Source.Exists)
         {
-            Console.WriteLine($"Source folder '{source.FullName}' does not exist.");
+            Console.WriteLine($"Source folder '{config.Source.FullName}' does not exist.");
             return false;
         }
-        if (!destination.Exists)
+        if (!config.Destination.Exists)
         {
-            Console.WriteLine($"Destination folder '{destination.FullName}' does not exist.");
+            Console.WriteLine($"Destination folder '{config.Destination.FullName}' does not exist.");
             return false;
         }
 
-        if (!initialise && filesToKeep != null && filesToKeep.Any()) 
+        if (!config.Initialise && config.FilesToKeep != null && config.FilesToKeep.Any())
         {
             Console.WriteLine("Parameter --keepFiles will be ignored because --initialise is false.");
         }

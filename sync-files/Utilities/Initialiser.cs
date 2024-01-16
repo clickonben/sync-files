@@ -1,24 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
+using SyncFiles.Model;
 
-namespace sync_files.Utilities
+namespace SyncFiles.Utilities
 {
     internal static class Initialiser
     {
-        internal static void Initialise(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, IEnumerable<string> filesToKeep)
+        internal static void Initialise(Config config)
         {
-            Console.WriteLine($"Initialising {destination.FullName}.");
-            Console.WriteLine($"Deleting contents of {destination.FullName}.");
-            if (filesToKeep.Any())
+            Console.WriteLine($"Initialising {config.Destination.FullName}.");
+            Console.WriteLine($"Deleting contents of {config.Destination.FullName}.");
+            if (config.FilesToKeep != null && config.FilesToKeep.Any())
             {
-                Console.WriteLine($"Excluding the following files {string.Join(',', filesToKeep)}.");
+                Console.WriteLine($"Excluding the following files {string.Join(',', config.FilesToKeep)}.");
             }
-            DeleteFilesAndFolders(destination, filesToKeep ?? Array.Empty<string>());
-            CopyFilesAndFolders(source, destination, filters);
+            DeleteFilesAndFolders(config.Destination, config.FilesToKeep ?? Array.Empty<string>());
+            CopyFilesAndFolders(config.Source, config.Destination, config.Filters);
         }
 
         private static void DeleteFilesAndFolders(DirectoryInfo destination, IEnumerable<string> filesToKeep)

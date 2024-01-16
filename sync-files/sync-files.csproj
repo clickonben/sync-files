@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net8.0</TargetFramework>
-		<RootNamespace>sync_files</RootNamespace>
+		<RootNamespace>SyncFiles</RootNamespace>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
@@ -11,6 +11,7 @@
 		<VersionPrefix>1.0.10</VersionPrefix>		
 	</PropertyGroup>
 	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 	</ItemGroup>
 </Project>
