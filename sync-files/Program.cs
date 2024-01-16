@@ -15,28 +15,7 @@ class Program
         RootCommand rootCommand = ParseArguments();       
 
         return await rootCommand.InvokeAsync(args);
-    }
-
-    private static async Task<Config?> TryLoadConfigFromFileAsync(params string[] filePaths)
-    {
-        foreach(string filePath in filePaths)
-        {
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    string json = await File.ReadAllTextAsync(filePath);
-                    return JsonConvert.DeserializeObject<Config>(json);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error reading config file: {ex.Message}");
-                }
-            }
-        }
-        
-        return null;
-    }
+    }    
 
     private static RootCommand ParseArguments()
     {
@@ -113,24 +92,45 @@ class Program
         }
     }
 
-    static async Task WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep, DirectoryInfo config)
+    static async Task WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep, DirectoryInfo configPath)
     {
-        var configfileName = "config.json";
-        var configfilePath = config != null ? Path.Combine(config.FullName, configfileName) : configfileName;
-        Config? configFile = await TryLoadConfigFromFileAsync(configfilePath);
+        var configFileName = "config.json";
+        var configFile = configPath != null ? Path.Combine(configPath.FullName, configFileName) : configFileName;
+        Config? config = await TryLoadConfigFromFileAsync(configFile);
 
-        if (configFile == null)
+        if (config == null)
         {
-            configFile = new(source, destination, initialise, filters, filesToKeep ?? Array.Empty<string>());
+            config = new(source, destination, initialise, filters, filesToKeep ?? Array.Empty<string>());
         }
         
 
-        if (!ConfigValid(configFile))
+        if (!ConfigValid(config))
         {
             return;
         }
         
-        WatchFolder(configFile);
+        WatchFolder(config);
+    }
+
+    private static async Task<Config?> TryLoadConfigFromFileAsync(params string[] filePaths)
+    {
+        foreach (string filePath in filePaths)
+        {
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    string json = await File.ReadAllTextAsync(filePath);
+                    return JsonConvert.DeserializeObject<Config>(json);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading config file: {ex.Message}");
+                }
+            }
+        }
+
+        return null;
     }
 
     static bool ConfigValid(Config config)

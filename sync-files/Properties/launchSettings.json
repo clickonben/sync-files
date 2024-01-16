@@ -2,7 +2,7 @@
   "profiles": {
     "sync-files": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"D:\\source\""
+      "commandLineArgs": "--config \"D:\\Source\""
     }
   }
 }
