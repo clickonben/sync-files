@@ -10,34 +10,31 @@ class Program
 {
     static DirectoryInfo? _destination;
     static async Task<int> Main(string[] args)
-    {
-
-        Config? configFile = await TryLoadConfigFromFileAsync("config.json");
-        if (configFile != null)
-        {
-            WatchFolder(configFile);
-            return 0;
-        }
+    {        
 
         RootCommand rootCommand = ParseArguments();       
 
         return await rootCommand.InvokeAsync(args);
     }
 
-    private static async Task<Config?> TryLoadConfigFromFileAsync(string filePath)
+    private static async Task<Config?> TryLoadConfigFromFileAsync(params string[] filePaths)
     {
-        if (File.Exists(filePath))
+        foreach(string filePath in filePaths)
         {
-            try
+            if (File.Exists(filePath))
             {
-                string json = await File.ReadAllTextAsync(filePath);
-                return JsonConvert.DeserializeObject<Config>(json);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error reading config file: {ex.Message}");
+                try
+                {
+                    string json = await File.ReadAllTextAsync(filePath);
+                    return JsonConvert.DeserializeObject<Config>(json);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading config file: {ex.Message}");
+                }
             }
         }
+        
         return null;
     }
 
@@ -66,7 +63,11 @@ class Program
         var filesToKeepOption = new Option<IEnumerable<string>>(
                 aliases: ["--keepFiles", "-kf"],
                 description: "Files to exclude from initialisation")
-                { AllowMultipleArgumentsPerToken = true }; ;
+                { AllowMultipleArgumentsPerToken = true };
+
+        var configOption = new Option<DirectoryInfo>(
+                aliases: ["--config", "-c"],
+                description: "Config path");
 
 
         rootCommand.AddOption(sourceOption);
@@ -74,6 +75,7 @@ class Program
         rootCommand.AddOption(filtersOption);
         rootCommand.AddOption(initialiseOption);
         rootCommand.AddOption(filesToKeepOption);
+        rootCommand.AddOption(configOption);
 
         rootCommand.SetHandler(
             WatchFolder,
@@ -81,7 +83,8 @@ class Program
             destinationOption,
             filtersOption,
             initialiseOption,
-            filesToKeepOption
+            filesToKeepOption,
+            configOption
         );
 
         return rootCommand;
@@ -110,16 +113,24 @@ class Program
         }
     }
 
-    static void WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep)
+    static async Task WatchFolder(DirectoryInfo source, DirectoryInfo destination, IEnumerable<string> filters, bool initialise, IEnumerable<string>? filesToKeep, DirectoryInfo config)
     {
-        Config config = new(source, destination, initialise, filters, filesToKeep ?? Array.Empty<string>());
+        var configfileName = "config.json";
+        var configfilePath = config != null ? Path.Combine(config.FullName, configfileName) : configfileName;
+        Config? configFile = await TryLoadConfigFromFileAsync(configfilePath);
 
-        if (!ConfigValid(config))
+        if (configFile == null)
+        {
+            configFile = new(source, destination, initialise, filters, filesToKeep ?? Array.Empty<string>());
+        }
+        
+
+        if (!ConfigValid(configFile))
         {
             return;
         }
         
-        WatchFolder(config);
+        WatchFolder(configFile);
     }
 
     static bool ConfigValid(Config config)

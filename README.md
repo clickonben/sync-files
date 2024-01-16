@@ -15,9 +15,20 @@ sync-files is a .NET console application designed to synchronize files between a
 
 ## Usage
 
+### Using Command-Line Arguments
+
+Use command-line arguments as follows:
+
+	--source "C:\source" 
+	--destination "C:\destination" 
+	--filters "*.py" "*.mpy" "*.toml" "*.html"
+	--initialise
+	--keepFiles "boot_out.txt" "settings.toml"
+	--config "C:\config"
+
 ### Using a Config File
 
-Create a `config.json` file in the same directory as the executable with the following structure:
+It looks for a `config.json` file in the same directory as the executable or in the `--config` directory with the following structure:
 
 ```json
 {
@@ -29,17 +40,7 @@ Create a `config.json` file in the same directory as the executable with the fol
 }
 ```
 
-### Using Command-Line Arguments
-
-Alternatively, use command-line arguments as follows:
-
-	--source "D:\source" 
-	--destination "D:\destination" 
-	--filters "*.py" "*.mpy" "*.toml" "*.html"
-	--initialise
-	--keepFiles "boot_out.txt" "settings.toml"
-
-Note: If a config.json file is present, command-line arguments will be ignored.
+Note: If a config.json file is present, command-line arguments other than `--config` will be ignored.
 
 ### Installation
 
