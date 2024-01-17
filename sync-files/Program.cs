@@ -10,8 +10,7 @@ class Program
 {
     static DirectoryInfo? _destination;
     static async Task<int> Main(string[] args)
-    {        
-
+    {
         RootCommand rootCommand = ParseArguments();       
 
         return await rootCommand.InvokeAsync(args);
@@ -125,7 +124,7 @@ class Program
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error reading config file: {ex.Message}");
+                    Console.WriteLine($"Error reading config file: {ex.Message}");                    
                 }
             }
         }

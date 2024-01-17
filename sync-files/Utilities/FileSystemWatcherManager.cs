@@ -38,13 +38,17 @@ namespace SyncFiles.Utilities
         {
             Console.WriteLine($"File created or changed: {e.FullPath}");
 
-            var dest = Path.Join(_destination?.FullName, e.Name);
+            FileInfo dest = new (Path.Join(_destination?.FullName, e.Name));
 
             Console.WriteLine($"Copying {e.FullPath} to {dest}");
 
             try
             {
-                File.Copy(e.FullPath, dest, true);
+                if(dest.Directory != null && !dest.Directory.Exists)
+                {
+                    dest.Directory.Create();
+                }
+                File.Copy(e.FullPath, dest.FullName, true);
             }
             catch (Exception ex)
             {
